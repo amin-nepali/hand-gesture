@@ -25,6 +25,9 @@ hand-gesture/
 ├── .env.example
 ├── docker-compose.yml
 └── public/
+    ├── vendor/
+    │   ├── face-api.js
+    │   └── face-api-LICENSE
     └── models/
         ├── tiny_face_detector_model-weights_manifest.json
         ├── tiny_face_detector_model.bin
@@ -63,6 +66,18 @@ Requirements: Node.js 20 or newer, npm, and Docker Desktop (or an existing Postg
 5. Open `http://localhost:3000`. Allow camera access when prompted. Use **Create profile** to enroll a face with consent; afterward, enter the destination and choose **Sign in**.
 
 The server creates its database table on startup. Templates and encrypted deletion-token hashes are stored in PostgreSQL; the profile deletion token is kept in the enrolling browser’s local storage. Deleting the database or losing the encryption key makes stored profiles unusable.
+
+## Deploy to Vercel
+
+Import this repository into Vercel with the project root set to the repository root. Vercel's zero-configuration Express support deploys the exported application from `server.js`; the face library and models under `public/` are served as static assets. Do not set a static output directory or a custom build command.
+
+Add these environment variables to the Vercel project for **Production** (and Preview if you plan to test preview deployments):
+
+- `DATABASE_URL`: a PostgreSQL connection string from a hosted provider. Prefer its pooled connection string for serverless functions.
+- `FACE_DATA_ENCRYPTION_KEY`: a unique key generated with the command above. Keep it in Vercel’s secret environment-variable storage and backed up separately from the database.
+- `NODE_ENV=production`
+
+Redeploy after setting the variables. Without them, the static page will load but `/api/*` deliberately returns HTTP 503 with the missing configuration named. A destination redirect only navigates the browser; it does not create an authenticated session on the destination website.
 
 ## Production
 

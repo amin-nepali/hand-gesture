@@ -17,18 +17,8 @@ const descriptorLength = 128;
 const matchThreshold = 0.48;
 const app = express();
 
-if (!databaseUrl) {
-  console.error("DATABASE_URL is required. Copy .env.example to .env and configure PostgreSQL.");
-  process.exit(1);
-}
-
-if (!/^[0-9a-fA-F]{64}$/.test(encryptionKeyHex)) {
-  console.error("FACE_DATA_ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 random bytes).");
-  process.exit(1);
-}
-
 const pool = new Pool({
-  connectionString: databaseUrl,
+  ...(databaseUrl ? { connectionString: databaseUrl } : {}),
   ssl: process.env.DATABASE_SSL === "disable"
     ? false
     : { rejectUnauthorized: process.env.DATABASE_SSL !== "require-insecure" },
@@ -36,6 +26,39 @@ const pool = new Pool({
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 5_000
 });
+let databaseReady;
+
+function getConfigurationError() {
+  if (!databaseUrl) {
+    return "DATABASE_URL is not configured. Add a PostgreSQL connection string to the deployment environment.";
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(encryptionKeyHex)) {
+    return "FACE_DATA_ENCRYPTION_KEY is not configured as a 64-character hexadecimal key.";
+  }
+  return null;
+}
+
+function ensureDatabase() {
+  if (!databaseReady) {
+    databaseReady = pool.query(`
+      CREATE TABLE IF NOT EXISTS face_profiles (
+        id UUID PRIMARY KEY,
+        display_name VARCHAR(60) NOT NULL,
+        encrypted_descriptor BYTEA NOT NULL,
+        iv BYTEA NOT NULL CHECK (octet_length(iv) = 12),
+        auth_tag BYTEA NOT NULL CHECK (octet_length(auth_tag) = 16),
+        management_token_hash BYTEA NOT NULL CHECK (octet_length(management_token_hash) = 32),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `).then(() => pool.query(
+      "CREATE INDEX IF NOT EXISTS face_profiles_created_at_idx ON face_profiles (created_at)"
+    )).catch((error) => {
+      databaseReady = null;
+      throw error;
+    });
+  }
+  return databaseReady;
+}
 
 app.disable("x-powered-by");
 app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
@@ -45,6 +68,16 @@ app.use(helmet({
   }
 }));
 app.use(express.json({ limit: "16kb", strict: true }));
+app.use("/api", async (_request, response, next) => {
+  const configurationError = getConfigurationError();
+  if (configurationError) return response.status(503).json({ error: configurationError });
+  try {
+    await ensureDatabase();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 app.use("/vendor", express.static(path.join(__dirname, "node_modules", "@vladmandic", "face-api", "dist"), {
   immutable: true,
   maxAge: "1d"
@@ -235,27 +268,20 @@ app.use((error, _request, response, _next) => {
 });
 
 async function start() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS face_profiles (
-      id UUID PRIMARY KEY,
-      display_name VARCHAR(60) NOT NULL,
-      encrypted_descriptor BYTEA NOT NULL,
-      iv BYTEA NOT NULL CHECK (octet_length(iv) = 12),
-      auth_tag BYTEA NOT NULL CHECK (octet_length(auth_tag) = 16),
-      management_token_hash BYTEA NOT NULL CHECK (octet_length(management_token_hash) = 32),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-  await pool.query(
-    "CREATE INDEX IF NOT EXISTS face_profiles_created_at_idx ON face_profiles (created_at)"
-  );
+  const configurationError = getConfigurationError();
+  if (configurationError) throw new Error(configurationError);
+  await ensureDatabase();
   app.listen(port, () => {
     console.log(`FaceKey is listening at http://localhost:${port}`);
   });
 }
 
-start().catch(async (error) => {
-  console.error("Unable to start FaceKey. Check PostgreSQL and DATABASE_URL.", error);
-  await pool.end();
-  process.exitCode = 1;
-});
+module.exports = app;
+
+if (require.main === module) {
+  start().catch(async (error) => {
+    console.error("Unable to start FaceKey. Check PostgreSQL and FACE_DATA_ENCRYPTION_KEY.", error);
+    await pool.end();
+    process.exitCode = 1;
+  });
+}
