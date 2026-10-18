@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0d0e12">
+    <meta name="description" content="An experimental, consent-based camera face matching demo.">
+    <title>FaceKey — Camera sign-in demo</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/vendor/face-api.js" defer></script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="FaceKey home">
+          <span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>face<span>key</span></span>
+        </a>
+        <span class="prototype-badge"><i></i> EXPERIMENTAL PROTOTYPE</span>
+      </header>
+
+      <section class="login-layout" aria-label="FaceKey sign in">
+        <div class="intro-column">
+          <div class="eyebrow"><span class="eyebrow-line"></span> A DIFFERENT WAY IN</div>
+          <h1>Your face.<br><span>Your key.</span></h1>
+          <p class="intro-copy">A camera-based face matching demo. No username or password. Just you, your camera, and the place you want to go.</p>
+
+          <div class="privacy-card">
+            <span class="privacy-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.3 2.8 8.2 7 10 4.2-1.8 7-5.7 7-10V6l-7-3Zm0 5v4m0 3h.01"/></svg>
+            </span>
+            <div>
+              <strong>Experimental, not Face ID</strong>
+              <p>Webcam matching can be fooled; it is not Face ID or secure authentication. Redirecting does not sign you into the destination website.</p>
+            </div>
+          </div>
+
+          <div class="steps">
+            <div><span>01</span><p>Enroll with your consent</p></div>
+            <div><span>02</span><p>Match using your camera</p></div>
+            <div><span>03</span><p>Continue to your destination</p></div>
+          </div>
+
+          <p class="privacy-footnote"><span class="privacy-lock" aria-hidden="true">⌑</span> Face templates are encrypted before being stored. Camera frames are processed locally and never uploaded.</p>
+        </div>
+
+        <section class="auth-card" aria-label="Camera login">
+          <div class="auth-card-header">
+            <div class="card-eyebrow">FACEKEY ACCESS</div>
+            <h2>Welcome back</h2>
+            <p>Look into your camera to continue.</p>
+          </div>
+
+          <div class="mode-tabs" role="tablist" aria-label="Access mode">
+            <button class="mode-tab is-active" id="login-tab" type="button" role="tab" aria-selected="true" aria-controls="login-panel">Sign in</button>
+            <button class="mode-tab" id="enroll-tab" type="button" role="tab" aria-selected="false" aria-controls="enroll-panel">Create profile</button>
+          </div>
+
+          <div class="destination-field">
+            <label for="destination">Continue to</label>
+            <div class="input-wrap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18m-9-9a14 14 0 0 1 0 18m0-18a14 14 0 0 0 0 18"/></svg>
+              <input id="destination" type="url" inputmode="url" autocomplete="url" placeholder="https://your-website.com" value="https://example.com">
+            </div>
+            <span class="field-hint">You’ll be sent here after a successful match.</span>
+          </div>
+
+          <div class="camera-frame" id="camera-frame">
+            <video id="camera" autoplay muted playsinline aria-label="Face matching camera"></video>
+            <div class="camera-overlay" aria-hidden="true">
+              <div class="face-guide"><i></i><i></i><i></i><i></i></div>
+              <div class="camera-mark"><span></span></div>
+            </div>
+            <div class="camera-prompt" id="camera-prompt">
+              <span class="camera-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h2l1.3-2h5.4L16 6h2a2 2 0 0 1 2 2v10H4V8Zm8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
+              </span>
+              <strong id="prompt-title">Camera is off</strong>
+              <span id="prompt-copy">Start when you’re ready to sign in.</span>
+            </div>
+            <div class="camera-status" id="camera-status"><i></i><span>CAMERA OFF</span></div>
+            <span class="camera-quality" id="camera-quality"></span>
+          </div>
+
+          <div class="form-feedback" id="feedback" role="status" aria-live="polite"></div>
+
+          <div id="login-panel" role="tabpanel" aria-labelledby="login-tab">
+            <button class="primary-button" id="login-button" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7v4m14-4a5 5 0 0 0-10 0v5a3 3 0 1 0 6 0v-5a1 1 0 0 0-2 0v5"/></svg>
+              <span>Sign in with your face</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </button>
+            <p class="action-note">No image is saved. Your camera calculates a matching template locally.</p>
+          </div>
+
+          <div id="enroll-panel" role="tabpanel" aria-labelledby="enroll-tab" hidden>
+            <div class="destination-field name-field">
+              <label for="display-name">Your display name</label>
+              <div class="input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+                <input id="display-name" type="text" maxlength="60" autocomplete="name" placeholder="How should we greet you?">
+              </div>
+            </div>
+            <label class="consent-check">
+              <input id="consent" type="checkbox">
+              <span class="custom-checkbox" aria-hidden="true"></span>
+              <span>I consent to saving an encrypted mathematical face template for this experimental demo. I understand it is not secure authentication.</span>
+            </label>
+            <button class="primary-button" id="enroll-button" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7v4m14-4a5 5 0 0 0-10 0v5a3 3 0 1 0 6 0v-5a1 1 0 0 0-2 0v5"/></svg>
+              <span>Create face profile</span>
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </button>
+            <p class="action-note">You can delete your profile from this device at any time.</p>
+          </div>
+
+          <div class="manage-row">
+            <button class="text-button" id="delete-profile" type="button" hidden>Delete my saved face profile</button>
+            <span class="secure-label"><span>●</span> ENCRYPTED STORAGE</span>
+          </div>
+        </section>
+      </section>
+
+      <footer class="page-footer">
+        <span>FACEKEY <i>/</i> AN EXPERIMENT IN CAMERA-BASED FACE MATCHING</span>
+        <button class="disclaimer-button" id="disclaimer-button" type="button">PRIVACY &amp; SECURITY</button>
+      </footer>
+    </main>
+  </body>
+</html>
