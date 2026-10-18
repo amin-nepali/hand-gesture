@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080a12">
+    <meta name="description" content="A real-time hand-tracking studio powered by MediaPipe Hands.">
+    <title>Gesture Studio — Live hand tracking</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Gesture Studio home">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>gesture<span class="brand-light">studio</span></span>
+        </a>
+        <div class="topbar-meta">
+          <span class="live-indicator" aria-hidden="true"></span>
+          <span>IN-BROWSER VISION</span>
+          <span class="meta-divider"></span>
+          <span>MEDIAPIPE HANDS</span>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <div class="intro">
+          <div>
+            <p class="eyebrow">YOUR CAMERA, REIMAGINED</p>
+            <h1>Make a little <span>magic.</span></h1>
+            <p class="intro-copy">Point with one finger. Pinch to click and control the studio hands-free.</p>
+          </div>
+          <div class="privacy-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 3 8.4 7 10 4-1.6 7-5.6 7-10V6l-7-3Zm0 4v10m-3-5h6"/></svg>
+            <span>PRIVATE BY DESIGN<br><strong>Video stays on your device</strong></span>
+          </div>
+        </div>
+
+        <div class="studio-grid">
+          <section class="preview-panel" aria-label="Live camera preview">
+            <div class="preview-topline">
+              <div class="preview-label"><span class="record-dot"></span> LIVE PREVIEW</div>
+              <div class="status-group">
+                <span class="status-pill" id="camera-status"><span class="status-dot"></span><span id="camera-status-text">Starting camera…</span></span>
+                <span class="status-pill hand-count-pill"><span id="hand-count">0</span>&nbsp; HANDS</span>
+              </div>
+            </div>
+
+            <div class="stage" id="stage">
+              <video id="video" autoplay playsinline muted aria-label="Webcam video"></video>
+              <canvas id="canvas" aria-label="Hand tracking visual effects"></canvas>
+              <div class="stage-shade" aria-hidden="true"></div>
+              <div class="stage-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+              <div class="stage-message" id="stage-message">
+                <span class="message-icon" id="message-icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h8A2.5 2.5 0 0 1 17 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 4 16.5v-9ZM17 10l4-2v8l-4-2"/></svg>
+                </span>
+                <strong id="message-title">Warming up your camera</strong>
+                <span id="message-copy">This usually takes just a moment.</span>
+                <button class="retry-button hidden" id="retry-button" type="button">Try again</button>
+              </div>
+              <div class="stage-hud">
+                <span><span class="hud-dot"></span> TRACKING <strong id="tracking-state">READY</strong></span>
+                <span>FPS <strong id="fps-value">—</strong></span>
+              </div>
+            </div>
+
+            <div class="preview-footer">
+              <span>Move your hands into the frame to begin</span>
+              <span class="resolution-label" id="resolution-label">— × —</span>
+            </div>
+          </section>
+
+          <aside class="controls-panel" aria-label="Studio controls">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">STUDIO</p>
+                <h2>Your controls</h2>
+              </div>
+              <span class="settings-glyph" aria-hidden="true">✳</span>
+            </div>
+
+            <div class="control-section">
+              <div class="section-title"><span>01</span> CAMERA</div>
+              <button class="control-row" id="camera-button" type="button" aria-pressed="true">
+                <span class="control-icon camera-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h8A2.5 2.5 0 0 1 17 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-8A2.5 2.5 0 0 1 4 16.5v-9ZM17 10l4-2v8l-4-2"/></svg>
+                </span>
+                <span class="control-copy"><strong id="camera-button-title">Camera on</strong><small id="camera-button-hint">Your camera is active</small></span>
+                <span class="switch is-on" id="camera-switch" aria-hidden="true"><i></i></span>
+              </button>
+              <button class="control-row" id="mirror-button" type="button" aria-pressed="true">
+                <span class="control-icon mirror-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 3v18M8 7 4 12l4 5m8-10 4 5-4 5"/></svg>
+                </span>
+                <span class="control-copy"><strong>Mirror view</strong><small>Feels like looking in a mirror</small></span>
+                <span class="switch is-on" id="mirror-switch" aria-hidden="true"><i></i></span>
+              </button>
+            </div>
+
+            <div class="control-section effect-section">
+              <div class="section-title"><span>02</span> EFFECTS</div>
+              <button class="control-row" id="landmarks-button" type="button" aria-pressed="true">
+                <span class="control-icon points-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="m7.5 7.5 3 8m6-8-3 8m-5-9h7"/></svg>
+                </span>
+                <span class="control-copy"><strong>Hand landmarks</strong><small>Show the tracking mesh</small></span>
+                <span class="switch is-on" id="landmarks-switch" aria-hidden="true"><i></i></span>
+              </button>
+
+              <div class="color-control">
+                <div class="color-heading">
+                  <span>Glow color</span>
+                  <span id="color-name">Electric lilac</span>
+                </div>
+                <div class="swatches" role="group" aria-label="Choose glow color">
+                  <button class="swatch selected" type="button" data-color="#b49aff" data-name="Electric lilac" aria-label="Electric lilac" aria-pressed="true"></button>
+                  <button class="swatch" type="button" data-color="#65e6c2" data-name="Mint pulse" aria-label="Mint pulse" aria-pressed="false"></button>
+                  <button class="swatch" type="button" data-color="#ff8fab" data-name="Soft coral" aria-label="Soft coral" aria-pressed="false"></button>
+                  <button class="swatch" type="button" data-color="#ffd479" data-name="Solar gold" aria-label="Solar gold" aria-pressed="false"></button>
+                  <span class="color-hint">Pinch to cycle</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gesture-card">
+              <span class="gesture-spark" aria-hidden="true">✦</span>
+              <div><strong>Point &amp; pinch to control</strong><span>Move your index finger to the controls, then pinch to press. Pinch the preview to cycle the glow.</span></div>
+            </div>
+
+            <button class="snapshot-button" id="snapshot-button" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Zm8 9a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg>
+              Capture snapshot
+              <span class="shortcut">PNG</span>
+            </button>
+          </aside>
+        </div>
+
+        <footer class="page-footer">
+          <span>GESTURE STUDIO <span class="footer-separator">/</span> A LITTLE EXPERIMENT IN COMPUTER VISION</span>
+          <span>BUILT FOR THE MOMENT</span>
+        </footer>
+      </section>
+    </main>
+    <div class="air-cursor is-hidden" id="air-cursor" aria-hidden="true">
+      <span class="air-cursor-ring"><i></i></span>
+      <span class="air-cursor-label" id="air-cursor-label">POINT</span>
+    </div>
+  </body>
+</html>
